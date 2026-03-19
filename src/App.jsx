@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
 import axios from 'axios';
-import Hls from 'hls.js'; // Cài đặt bằng: npm install hls.js
+import Hls from 'hls.js'; // Đảm bảo đã chạy: npm install hls.js
 
-// [COMPONENT TRÌNH PHÁT VIDEO M3U8 - KHÔNG QUẢNG CÁO]
+// [COMPONENT TRÌNH PHÁT VIDEO M3U8 - SẠCH QUẢNG CÁO]
 const VideoPlayer = ({ url }) => {
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
@@ -38,18 +38,16 @@ const VideoPlayer = ({ url }) => {
         ref={videoRef} 
         controls 
         className="w-full h-full outline-none shadow-2xl"
-        poster="https://static.vecteezy.com/system/resources/previews/010/853/065/original/aesthetic-black-background-free-vector.jpg"
+        poster="https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&q=80&w=1400"
       />
     </div>
   );
 };
 
-// [HIỆU ỨNG HOVER SPOTLIGHT & TẬP MỜ HIỂN THỊ]
+// [CARD PHIM SPOTLIGHT]
 const MovieCard = memo(({ movie, onClick, isRecent = false }) => {
   const getEpDisplay = () => {
-    if (isRecent) {
-      return `ĐANG XEM: TẬP ${movie.lastEp?.toString().replace(/Tập\s*/i, '').toUpperCase() || '1'}`;
-    }
+    if (isRecent) return `ĐANG XEM: TẬP ${movie.lastEp?.toString().replace(/Tập\s*/i, '').toUpperCase() || '1'}`;
     const rawEp = movie.episode_current || movie.last_episode || "HD";
     return `TẬP ${rawEp.toString().replace(/Tập\s*/i, '').toUpperCase()}`;
   };
@@ -57,36 +55,29 @@ const MovieCard = memo(({ movie, onClick, isRecent = false }) => {
   return (
     <div onClick={() => onClick(movie.slug)} className="group cursor-pointer relative animate-in fade-in zoom-in duration-500">
       <div className="relative rounded-xl overflow-hidden bg-zinc-900 border border-white/5 transition-all duration-700 group-hover:scale-110 group-hover:rotate-[-2deg] group-hover:border-white/20 group-hover:shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_20px_rgba(255,255,255,0.05)]">
-        
         <div className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent z-10" />
-
         <div className="absolute top-2 left-2 z-20">
-          <span className="bg-black/40 backdrop-blur-md border border-white/10 text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-tighter shadow-xl">
+          <span className="bg-black/40 backdrop-blur-md border border-white/10 text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-tighter">
             {movie.lang || 'VIETSUB'}
           </span>
         </div>
-        
         <img 
           src={movie.poster_url?.startsWith('http') ? movie.poster_url : `https://phimimg.com/${movie.poster_url}`} 
           loading="lazy" 
           className="w-full aspect-[2/3] object-cover transition duration-700 group-hover:brightness-125" 
           alt={movie.name} 
         />
-
         <div className="absolute bottom-2 right-2 z-20">
-          <span className="bg-black/40 backdrop-blur-md border border-white/10 text-gray-100 text-[10px] font-black px-2.5 py-1.5 rounded-lg shadow-xl leading-none">
+          <span className="bg-black/40 backdrop-blur-md border border-white/10 text-gray-100 text-[10px] font-black px-2.5 py-1.5 rounded-lg shadow-xl">
             {getEpDisplay()}
           </span>
         </div>
       </div>
-
       <div className="mt-3 px-1 transition-transform duration-500 group-hover:translate-x-1">
-        <h4 className="text-[12px] font-black uppercase truncate text-gray-100 group-hover:text-red-600 transition-colors leading-tight">
+        <h4 className="text-[12px] font-black uppercase truncate text-gray-100 group-hover:text-red-600 transition-colors">
           {movie.name}
         </h4>
-        <p className="text-[13px] font-bold text-gray-600 mt-1 flex items-center gap-1.5">
-          {movie.year} <span className="text-[11px] opacity-0 group-hover:opacity-100 transition-opacity">🍿</span>
-        </p>
+        <p className="text-[13px] font-bold text-gray-600 mt-1">{movie.year}</p>
       </div>
     </div>
   );
@@ -94,11 +85,9 @@ const MovieCard = memo(({ movie, onClick, isRecent = false }) => {
 
 function App() {
   const [sections, setSections] = useState({ hot: [], anime: [], hhtq: [], cine: [], korea: [], china: [], search: [] });
-  const [recent, setRecent] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [episodes, setEpisodes] = useState([]);
   const [playerUrl, setPlayerUrl] = useState('');
-  const [activeServer, setActiveServer] = useState(0);
   const [activeEp, setActiveEp] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,13 +97,6 @@ function App() {
 
   const sortNewest = useCallback((list) => {
     return list ? [...list].sort((a, b) => (parseInt(b.year) || 0) - (parseInt(a.year) || 0)) : [];
-  }, []);
-
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('lam_house_recent')) || [];
-    setRecent(saved);
-    const timer = setInterval(() => setCurrentBanner(p => (p + 1) % 5), 6000);
-    return () => clearInterval(timer);
   }, []);
 
   const fetchData = useCallback(async (mode = 'home', page = 1, query = '') => {
@@ -129,7 +111,6 @@ function App() {
           axios.get(`https://phimapi.com/v1/api/quoc-gia/han-quoc?limit=24&page=${page}`),
           axios.get(`https://phimapi.com/v1/api/quoc-gia/trung-quoc?limit=24&page=${page}`)
         ]);
-
         setSections({
           hot: sortNewest(resHot.data.items).slice(0, 8), 
           anime: sortNewest(resAnime.data.data.items.filter(i => !i.origin_name?.toLowerCase().includes('china'))).slice(0, 8),
@@ -146,7 +127,11 @@ function App() {
     } catch (err) { console.error("Lỗi API:", err); }
   }, [sortNewest]);
 
-  useEffect(() => { fetchData('home', 1); }, [fetchData]);
+  useEffect(() => { 
+    fetchData('home', 1);
+    const timer = setInterval(() => setCurrentBanner(p => (p + 1) % 5), 6000);
+    return () => clearInterval(timer);
+  }, [fetchData]);
 
   const handleWatch = async (slug, epIndex = 0) => {
     try {
@@ -155,46 +140,45 @@ function App() {
       setSelectedMovie(movie); 
       setEpisodes(eps);
       
-      // LẤY LINK M3U8 ĐỂ CHẠY PLAYER RIÊNG
-      const currentServer = eps[activeServer];
+      // FIX LẤY LINK M3U8 SERVER 0
+      const currentServer = eps[0];
       if (currentServer && currentServer.server_data[epIndex]) {
-        setPlayerUrl(currentServer.server_data[epIndex].link_m3u8);
+        const link = currentServer.server_data[epIndex].link_m3u8 || currentServer.server_data[epIndex].link_embed;
+        setPlayerUrl(link);
       }
       
       setActiveEp(epIndex);
       setTimeout(() => playerRef.current?.scrollIntoView({ behavior: 'smooth' }), 300);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error("Lỗi xem phim:", err); }
   };
 
   return (
     <div className="w-full min-h-screen bg-[#050505] text-white font-sans pb-20 overflow-x-hidden">
-      <nav className="fixed top-0 w-full z-[100] px-6 md:px-12 py-5 flex justify-between items-center bg-black/80 backdrop-blur-2xl border-b border-white/5 shadow-2xl">
-        <h1 className="text-red-600 text-3xl font-black tracking-tighter cursor-pointer active:scale-95 transition-transform" 
+      {/* NAVBAR */}
+      <nav className="fixed top-0 w-full z-[100] px-6 md:px-12 py-5 flex flex-col md:flex-row justify-between items-center bg-black/80 backdrop-blur-2xl border-b border-white/5 gap-4">
+        <h1 className="text-red-600 text-3xl font-black tracking-tighter cursor-pointer" 
             onClick={() => { fetchData('home', 1); setSelectedMovie(null); }}>LÂM'S HOUSE</h1>
         <form onSubmit={(e) => { e.preventDefault(); fetchData('search', 1, searchQuery); setSelectedMovie(null); }}>
           <input 
-            type="text" 
-            placeholder="TÌM PHIM NGAY..." 
-            value={searchQuery} 
+            type="text" placeholder="TÌM PHIM NGAY..." value={searchQuery} 
             onChange={(e) => setSearchQuery(e.target.value)} 
-            className="bg-white/5 border border-white/10 rounded-full px-8 py-3 text-[13px] font-bold w-64 md:w-[400px] focus:border-red-600 outline-none transition-all shadow-inner placeholder:text-gray-600 uppercase" 
+            className="bg-white/5 border border-white/10 rounded-full px-8 py-3 text-[13px] font-bold w-64 md:w-[400px] focus:border-red-600 outline-none uppercase" 
           />
         </form>
       </nav>
 
-      <div className="pt-28">
+      <div className="pt-36 md:pt-28">
+        {/* BANNER */}
         {viewMode === 'home' && !selectedMovie && sections.hot.length > 0 && (
-          <div className="px-6 md:px-12 mb-16 animate-in fade-in duration-1000">
-            <div className="relative w-full h-[85vh] rounded-[3rem] overflow-hidden border border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.8)] bg-zinc-950">
+          <div className="px-6 md:px-12 mb-16">
+            <div className="relative w-full h-[60vh] md:h-[85vh] rounded-[2rem] md:rounded-[3rem] overflow-hidden border border-white/10 shadow-2xl bg-zinc-950">
               {sections.hot.slice(0, 5).map((movie, index) => (
-                <div key={movie.slug} className={`absolute inset-0 transition-opacity duration-[1500ms] ease-in-out ${currentBanner === index ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
-                  <img src={movie.thumb_url} className="w-full h-full object-cover brightness-100" alt="" />
+                <div key={movie.slug} className={`absolute inset-0 transition-opacity duration-[1500ms] ${currentBanner === index ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
+                  <img src={movie.thumb_url} className="w-full h-full object-cover brightness-75" alt="" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-                  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-6 animate-in slide-in-from-bottom-5 duration-700">
-                    <div className="bg-black/20 backdrop-blur-lg border border-white/5 px-6 py-3 rounded-2xl shadow-inner max-w-xl transition-all duration-700">
-                      <h2 className="text-xl md:text-2xl font-black uppercase italic opacity-60 tracking-tighter leading-none text-center">{movie.name}</h2>
-                    </div>
-                    <button onClick={() => handleWatch(movie.slug)} className="bg-white/10 backdrop-blur-md border border-white/20 text-white px-12 py-4 rounded-2xl font-black uppercase text-[11px] hover:bg-red-600 hover:scale-110 hover:border-transparent transition-all shadow-2xl active:scale-95">
+                  <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-6 text-center w-full px-4">
+                    <h2 className="text-xl md:text-3xl font-black uppercase italic tracking-tighter max-w-2xl">{movie.name}</h2>
+                    <button onClick={() => handleWatch(movie.slug)} className="bg-red-600 text-white px-10 py-3 rounded-2xl font-black uppercase text-[11px] hover:scale-110 transition-all shadow-xl">
                       Xem ngay
                     </button>
                   </div>
@@ -204,25 +188,29 @@ function App() {
           </div>
         )}
 
+        {/* PLAYER */}
         {selectedMovie && (
-          <div ref={playerRef} className="w-full mb-16 px-4 md:px-0 animate-in fade-in duration-700">
+          <div ref={playerRef} className="w-full mb-16 px-4 md:px-0">
             <div className="max-w-[1400px] mx-auto rounded-[2rem] shadow-2xl border border-white/5 aspect-video bg-black overflow-hidden relative">
-               {/* SỬ DỤNG VIDEO PLAYER MỚI Ở ĐÂY */}
                <VideoPlayer url={playerUrl} />
             </div>
-            <div className="max-w-[1400px] mx-auto mt-10 p-8 bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5">
+            <div className="max-w-[1400px] mx-auto mt-10 p-6 md:p-8 bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5">
                 <div className="flex flex-wrap gap-2 mb-8">
-                    {episodes[activeServer]?.server_data.map((ep, i) => (
-                      <button key={i} onClick={() => {setPlayerUrl(ep.link_m3u8); setActiveEp(i);}} 
-                      className={`min-w-[60px] py-3 rounded-xl text-[12px] font-black transition-all ${activeEp === i ? 'bg-white text-black scale-110' : 'bg-white/5 hover:bg-white/10'}`}>{ep.name}</button>
+                    {episodes[0]?.server_data.map((ep, i) => (
+                      <button key={i} onClick={() => {setPlayerUrl(ep.link_m3u8 || ep.link_embed); setActiveEp(i);}} 
+                      className={`min-w-[60px] py-3 px-4 rounded-xl text-[12px] font-black transition-all ${activeEp === i ? 'bg-red-600 text-white scale-110' : 'bg-white/5 hover:bg-white/10 text-gray-400'}`}>
+                        {ep.name}
+                      </button>
                     ))}
                 </div>
-                <h2 className="text-3xl font-black uppercase text-red-600 italic tracking-tighter leading-none">{selectedMovie.name}</h2>
+                <h2 className="text-2xl md:text-3xl font-black uppercase text-red-600 italic tracking-tighter">{selectedMovie.name}</h2>
             </div>
           </div>
         )}
 
+        {/* SECTIONS */}
         <div className="space-y-20">
+          {viewMode === 'search' && <SectionRow title="Kết quả tìm kiếm" data={sections.search} color="bg-yellow-500" MovieCard={MovieCard} onClick={handleWatch} />}
           <SectionRow title="Hot Trending" data={sections.hot} color="bg-red-600" MovieCard={MovieCard} onClick={handleWatch} />
           <SectionRow title="Anime Nhật Bản" data={sections.anime} color="bg-orange-400" MovieCard={MovieCard} onClick={handleWatch} />
           <SectionRow title="Cine Rạp" data={sections.cine} color="bg-purple-500" MovieCard={MovieCard} onClick={handleWatch} />
@@ -231,34 +219,29 @@ function App() {
         </div>
       </div>
 
-      {viewMode === 'home' && (
-        <div className="flex justify-center items-center gap-3 mt-24 pb-10 animate-in fade-in duration-1000">
-          <button onClick={() => fetchData('home', Math.max(1, currentPage - 1))} className="p-4 bg-zinc-900 rounded-xl hover:text-red-500 transition-all active:scale-95">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
-          </button>
+      {/* PAGINATION */}
+      {viewMode === 'home' && !selectedMovie && (
+        <div className="flex justify-center items-center gap-3 mt-24 pb-10">
           {[1, 2, 3, 4, 5].map(p => (
             <button key={p} onClick={() => fetchData('home', p)} 
-            className={`w-14 h-14 rounded-xl font-black text-[15px] transition-all ${currentPage === p ? 'bg-red-600 scale-110 shadow-lg shadow-red-600/30 text-white' : 'bg-zinc-900 text-gray-500 hover:text-white'}`}>
+            className={`w-12 h-12 rounded-xl font-black text-[14px] transition-all ${currentPage === p ? 'bg-red-600 text-white' : 'bg-zinc-900 text-gray-500 hover:text-white'}`}>
               0{p}
             </button>
           ))}
-          <button onClick={() => fetchData('home', currentPage + 1)} className="p-4 bg-zinc-900 rounded-xl hover:text-red-500 transition-all active:scale-95">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-          </button>
         </div>
       )}
     </div>
   );
 }
 
-const SectionRow = memo(({ title, data, color, MovieCard, onClick, isRecent = false }) => (
+const SectionRow = memo(({ title, data, color, MovieCard, onClick }) => (
   data.length > 0 && (
-    <div className="px-6 md:px-12 animate-in slide-in-from-bottom-5 duration-500">
+    <div className="px-6 md:px-12">
       <h3 className="text-2xl font-black italic flex items-center gap-3 mb-8 uppercase">
         <span className={`w-1.5 h-7 ${color} rounded-full`}></span> {title}
       </h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-6">
-        {data.map(m => <MovieCard key={m.slug + (isRecent ? '-rec' : '')} movie={m} onClick={onClick} isRecent={isRecent} />)}
+        {data.map(m => <MovieCard key={m.slug} movie={m} onClick={onClick} />)}
       </div>
     </div>
   )
