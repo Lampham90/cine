@@ -1,5 +1,48 @@
 import React, { useEffect, useState, useCallback, useRef, memo } from 'react';
 import axios from 'axios';
+import Hls from 'hls.js'; // Cài đặt bằng: npm install hls.js
+
+// [COMPONENT TRÌNH PHÁT VIDEO M3U8 - KHÔNG QUẢNG CÁO]
+const VideoPlayer = ({ url }) => {
+  const videoRef = useRef(null);
+  const hlsRef = useRef(null);
+
+  useEffect(() => {
+    if (url && videoRef.current) {
+      const video = videoRef.current;
+
+      if (Hls.isSupported()) {
+        if (hlsRef.current) hlsRef.current.destroy();
+        const hls = new Hls();
+        hlsRef.current = hls;
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.play().catch(() => console.log("Cần tương tác để phát"));
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+        video.addEventListener('loadedmetadata', () => {
+          video.play();
+        });
+      }
+    }
+    return () => {
+      if (hlsRef.current) hlsRef.current.destroy();
+    };
+  }, [url]);
+
+  return (
+    <div className="relative w-full h-full bg-black">
+      <video 
+        ref={videoRef} 
+        controls 
+        className="w-full h-full outline-none shadow-2xl"
+        poster="https://static.vecteezy.com/system/resources/previews/010/853/065/original/aesthetic-black-background-free-vector.jpg"
+      />
+    </div>
+  );
+};
 
 // [HIỆU ỨNG HOVER SPOTLIGHT & TẬP MỜ HIỂN THỊ]
 const MovieCard = memo(({ movie, onClick, isRecent = false }) => {
@@ -15,10 +58,8 @@ const MovieCard = memo(({ movie, onClick, isRecent = false }) => {
     <div onClick={() => onClick(movie.slug)} className="group cursor-pointer relative animate-in fade-in zoom-in duration-500">
       <div className="relative rounded-xl overflow-hidden bg-zinc-900 border border-white/5 transition-all duration-700 group-hover:scale-110 group-hover:rotate-[-2deg] group-hover:border-white/20 group-hover:shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_20px_rgba(255,255,255,0.05)]">
         
-        {/* Tia sáng lướt qua khi hover */}
         <div className="absolute inset-0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent z-10" />
 
-        {/* Label VIETSUB mờ */}
         <div className="absolute top-2 left-2 z-20">
           <span className="bg-black/40 backdrop-blur-md border border-white/10 text-white text-[9px] font-black px-2 py-1 rounded uppercase tracking-tighter shadow-xl">
             {movie.lang || 'VIETSUB'}
@@ -32,7 +73,6 @@ const MovieCard = memo(({ movie, onClick, isRecent = false }) => {
           alt={movie.name} 
         />
 
-        {/* [TẬP MỜ HIỂN THỊ SẴN] */}
         <div className="absolute bottom-2 right-2 z-20">
           <span className="bg-black/40 backdrop-blur-md border border-white/10 text-gray-100 text-[10px] font-black px-2.5 py-1.5 rounded-lg shadow-xl leading-none">
             {getEpDisplay()}
@@ -114,7 +154,13 @@ function App() {
       const { movie, episodes: eps } = res.data;
       setSelectedMovie(movie); 
       setEpisodes(eps);
-      setPlayerUrl(eps[activeServer]?.server_data[epIndex].link_embed);
+      
+      // LẤY LINK M3U8 ĐỂ CHẠY PLAYER RIÊNG
+      const currentServer = eps[activeServer];
+      if (currentServer && currentServer.server_data[epIndex]) {
+        setPlayerUrl(currentServer.server_data[epIndex].link_m3u8);
+      }
+      
       setActiveEp(epIndex);
       setTimeout(() => playerRef.current?.scrollIntoView({ behavior: 'smooth' }), 300);
     } catch (err) { console.error(err); }
@@ -137,7 +183,6 @@ function App() {
       </nav>
 
       <div className="pt-28">
-        {/* BANNER 85VH CINEMATIC */}
         {viewMode === 'home' && !selectedMovie && sections.hot.length > 0 && (
           <div className="px-6 md:px-12 mb-16 animate-in fade-in duration-1000">
             <div className="relative w-full h-[85vh] rounded-[3rem] overflow-hidden border border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.8)] bg-zinc-950">
@@ -145,8 +190,6 @@ function App() {
                 <div key={movie.slug} className={`absolute inset-0 transition-opacity duration-[1500ms] ease-in-out ${currentBanner === index ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
                   <img src={movie.thumb_url} className="w-full h-full object-cover brightness-100" alt="" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
-                  
-                  {/* CỤM GIỮA BANNER: Tên phim trên nút */}
                   <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-6 animate-in slide-in-from-bottom-5 duration-700">
                     <div className="bg-black/20 backdrop-blur-lg border border-white/5 px-6 py-3 rounded-2xl shadow-inner max-w-xl transition-all duration-700">
                       <h2 className="text-xl md:text-2xl font-black uppercase italic opacity-60 tracking-tighter leading-none text-center">{movie.name}</h2>
@@ -164,12 +207,13 @@ function App() {
         {selectedMovie && (
           <div ref={playerRef} className="w-full mb-16 px-4 md:px-0 animate-in fade-in duration-700">
             <div className="max-w-[1400px] mx-auto rounded-[2rem] shadow-2xl border border-white/5 aspect-video bg-black overflow-hidden relative">
-               <iframe src={playerUrl} className="w-full h-full border-none" allowFullScreen title="player" />
+               {/* SỬ DỤNG VIDEO PLAYER MỚI Ở ĐÂY */}
+               <VideoPlayer url={playerUrl} />
             </div>
             <div className="max-w-[1400px] mx-auto mt-10 p-8 bg-zinc-900/60 backdrop-blur-3xl rounded-[2.5rem] border border-white/5">
                 <div className="flex flex-wrap gap-2 mb-8">
                     {episodes[activeServer]?.server_data.map((ep, i) => (
-                      <button key={i} onClick={() => {setPlayerUrl(ep.link_embed); setActiveEp(i);}} 
+                      <button key={i} onClick={() => {setPlayerUrl(ep.link_m3u8); setActiveEp(i);}} 
                       className={`min-w-[60px] py-3 rounded-xl text-[12px] font-black transition-all ${activeEp === i ? 'bg-white text-black scale-110' : 'bg-white/5 hover:bg-white/10'}`}>{ep.name}</button>
                     ))}
                 </div>
@@ -187,7 +231,6 @@ function App() {
         </div>
       </div>
 
-      {/* PHÂN TRANG GỐC */}
       {viewMode === 'home' && (
         <div className="flex justify-center items-center gap-3 mt-24 pb-10 animate-in fade-in duration-1000">
           <button onClick={() => fetchData('home', Math.max(1, currentPage - 1))} className="p-4 bg-zinc-900 rounded-xl hover:text-red-500 transition-all active:scale-95">
